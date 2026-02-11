@@ -1,0 +1,53 @@
+export component MainWindow inherits Window {
+    title: "퀴즈 마법사";
+    width: 800px;
+    height: 600px;
+
+    MenuBar {
+        Menu {
+            title: "문제은행 관리";
+            MenuItem { title: "새 문제은행 제작"; activated => {} }
+            MenuItem { title: "불러오기"; activated => { root.load-question-bank(); } }
+            MenuItem { title: "편집"; activated => {} }
+            MenuItem { title: "내보내기"; activated => {} }
+            MenuItem { title: "다른 이름으로 내보내기"; activated => {} }
+            MenuItem { title: "최적화"; activated => {} }
+        }
+        Menu {
+            title: "시험지 생성";
+            MenuItem { title: "문제은행 불러오기"; activated => { root.load-question-bank(); } }
+            MenuItem { title: "문제추출 기준"; activated => {} }
+            MenuItem { title: "학생 명단 불러오기"; activated => {} }
+            MenuItem { title: "시험지 내보내기"; activated => {} }
+        }
+        Menu {
+            title: "학생명단 관리";
+            MenuItem { title: "불러오기"; activated => {} }
+            MenuItem { title: "편집"; activated => {} }
+            MenuItem { title: "내보내기"; activated => {} }
+            MenuItem { title: "다른 이름으로 내보내기"; activated => {} }
+        }
+        Menu {
+            title: "학습";
+            MenuItem { title: "문제은행 불러오기"; activated => { root.load-question-bank(); } }
+            MenuItem { title: "문제추출 기준"; activated => {} }
+            MenuItem { title: "체점기준"; activated => {} }
+            MenuItem { title: "시험보기"; activated => {} }
+        }
+        Menu {
+            title: "설정";
+            MenuItem { title: "저장소 경로"; activated => {} }
+            MenuItem { title: "분위기"; activated => {} }
+            MenuItem { title: "글꼴"; activated => {} }
+            MenuItem { title: "언어"; activated => {} }
+        }
+        Menu {
+            title: "정보";
+            MenuItem { title: "도움말"; activated => {} }
+            MenuItem { title: "소프트웨어 정보"; activated => {} }
+            MenuItem { title: "저작권 정보"; activated => {} }
+        }
+    }
+    callback load-question-bank();
+    callback show-path-dialog(path: string);
+}

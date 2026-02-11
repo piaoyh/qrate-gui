@@ -11,9 +11,18 @@ readme = "README.md"
 repository = "https://github.com/piaoyh/qrate-gui"
 
 [dependencies]
-qrate = "0.4.0"
+qrate = "0.5"
+slint = "1" # Added slint dependency
+rfd = "0.17" # Added rfd dependency
+
+[build-dependencies]
+slint-build = "1" # Added slint-build dependency
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [profile.dev]
 incremental = false
+
+[[example]]
+name = "intro"
+path = "examples/intro.rs"
