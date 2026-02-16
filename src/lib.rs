@@ -8,15 +8,22 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 
+
 //! # Qrate-gui
 //! 
-//! qrate-gui is a graphical interface library that leverages Slint for its UI
+//! qrate-gui is a graphical interface library that leverages Iced for its UI
 //! components and qrate for managing question banks and student data.
 //! 
 //! It enables developers to build applications where users can configure
 //! examination parameters and seamlessly receive generated results.
 
+rust_i18n::i18n!("locales", fallback = "en-US");
 
+
+// All Slint related code has been removed. This library will be integrated into the Iced application.
+
+/// The core logic and state management for the Qrate-GUI application.
 mod control_tower;
 
-pub use control_tower::ControlTower;
+/// Re-exports the main application components for external use.
+pub use control_tower::{ ControlTower, Message };

@@ -1,15 +1,19 @@
-// For developing qrate-gui
+use iced::{ Element, Task };
+use iced::widget::{ column, row, center, text };
 
-#![windows_subsystem = "windows"]
-
-
-use qrate_gui::ControlTower;
-use std::rc::Rc;
-use std::cell::RefCell;
-
-fn main() -> Result<(), String>
+// The `control_tower` module is now brought in via `lib.rs`, so `mod control_tower;` is no longer needed here.
+use qrate_gui::{ ControlTower, Message }; // Using crate path
+fn main() -> iced::Result
 {
-    let control_tower_rc = ControlTower::new()?;
-    ControlTower::set_functionalities(&control_tower_rc)?;
-    ControlTower::run(control_tower_rc)
+    // Removed `pub` as it's an example binary
+    // To prevent lifetime errors, .title() and .theme() have been removed.
+    // Only the basic form of application().run() remains.
+    iced::application(
+        ControlTower::new,
+        ControlTower::update, 
+        ControlTower::view
+    )
+    .run()
 }
+
+
