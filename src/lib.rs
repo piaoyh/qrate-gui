@@ -17,7 +17,7 @@
 //! It enables developers to build applications where users can configure
 //! examination parameters and seamlessly receive generated results.
 
-rust_i18n::i18n!("locales", fallback = "en-US");
+rust_i18n::i18n!("assets/locales", fallback = "en");
 
 
 // All Slint related code has been removed. This library will be integrated into the Iced application.

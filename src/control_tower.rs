@@ -14,6 +14,9 @@ use iced::widget::{ button, column, row, text, center, container };
 use iced::{ Element, Task, Theme, Length, Color };
 use rfd::FileDialog;
 use rust_i18n::t;
+use include_dir::{include_dir, Dir};
+
+static LOCALES_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets/locales");
 
 
 /// Represents the messages that can be sent to the [ControlTower] to update its state.
@@ -81,13 +84,13 @@ impl ControlTower
     /// ```
     pub fn new() -> (Self, Task<Message>)
     {
-        rust_i18n::set_locale("en-US"); // Set initial locale for the application
+        rust_i18n::set_locale("en"); // Set initial locale for the application
         (
             Self {
                 selected_file_path: None,
                 current_menu_key: None,
                 menu_font_size_in_pixel: 24.0,
-                current_locale: "en-US".to_string(), // Initialize current_locale field
+                current_locale: "en".to_string(), // Initialize current_locale field
                 current_page: "main".to_string(), // Initialize current_page field
             },
             Task::none(),
@@ -245,7 +248,7 @@ impl ControlTower
                 // Korean, Hanja, Hiragana, and Katakana characters are calculated as full menu_font_size_in_pixel,
                 // while other characters including spaces are calculated as half.
                 let text_width_estimate = self.calculate_text_width_estimate(t!(key).as_ref()); // t!(key)의 결과로 width 계산
-                offset_x += text_width_estimate + menu_bar_spacing; // + (button_padding * 2.0)
+                offset_x += text_width_estimate + menu_bar_spacing + (button_padding * 2.0)
             }
         }
 
@@ -386,20 +389,25 @@ impl ControlTower
             },
             "language-settings" => {
                 // Language selection page
+                let available_locales = Self::get_available_locales();
+                let current_i18n_locale = rust_i18n::locale(); // Get current i18n locale
+                let debug_text = format!("Detected locales: {:?} | Current i18n locale: {}", available_locales, &*current_i18n_locale); // Debug text
+                let language_buttons = available_locales.into_iter().fold(
+                    column![].spacing(10),
+                    |col, (language_name, locale)| {
+                        col.push(
+                            button(text(language_name).size(self.menu_font_size_in_pixel))
+                                .on_press(Message::SetLocale(locale))
+                                .width(Length::Fill)
+                                .padding(8),
+                        )
+                    },
+                );
+
                 column![
                     text(t!("language")).size(32),
-                    button(text("English").size(self.menu_font_size_in_pixel))
-                        .on_press(Message::SetLocale("en-US".to_string()))
-                        .width(Length::Fill)
-                        .padding(8),
-                    button(text("한국어").size(self.menu_font_size_in_pixel))
-                        .on_press(Message::SetLocale("ko-KR".to_string()))
-                        .width(Length::Fill)
-                        .padding(8),
-                    button(text("Русский").size(self.menu_font_size_in_pixel))
-                        .on_press(Message::SetLocale("ru-RU".to_string()))
-                        .width(Length::Fill)
-                        .padding(8),
+                    text(debug_text).size(16), // Display debug text
+                    language_buttons,
                     iced::widget::Space::new().height(Length::Fixed(20.0)),
                     button(text(t!("back")).size(self.menu_font_size_in_pixel))
                         .on_press(Message::GoToPage("main".to_string()))
@@ -424,6 +432,42 @@ impl ControlTower
         .width(Length::Fill)
         .height(Length::Fill)
         .into()
+    }
+
+    // fn get_available_locales() -> Vec<(String, String)>
+    /// Returns a list of available locales by reading the `assets/locales` directory.
+    ///
+    /// # Output
+    /// A `Vec<(String, String)>` where each tuple contains the language name and the locale code.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use crate::control_tower::ControlTower;
+    /// 
+    /// let locales = ControlTower::get_available_locales();
+    /// assert!(!locales.is_empty());
+    /// ```
+    fn get_available_locales() -> Vec<(String, String)>
+    {
+        let mut locales = Vec::new();
+
+        for file in LOCALES_DIR.files() {
+            if let Some(file_name_os) = file.path().file_name() {
+                if let Some(file_name) = file_name_os.to_str() {
+                    if file_name.ends_with(".yml") {
+                        let locale = file_name.trim_end_matches(".yml");
+                        let language_name = match locale {
+                            "en" => "English".to_string(),
+                            "ko" => "한국어".to_string(),
+                            "ru" => "Русский".to_string(),
+                            _ => locale.to_string(),
+                        };
+                        locales.push((language_name.clone(), locale.to_string()));
+                    }
+                }
+            }
+        }
+        locales
     }
 
     // async fn pick_file() -> Option<PathBuf>

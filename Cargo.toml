@@ -6,7 +6,7 @@ edition = "2024"
 keywords = ["quiz", "gui", "examination", "question", "teacher"]
 categories = ["algorithms", "data-structures", "database", "gui"]
 description = "A GUI examination generator library that generates different quiz sets for all students so that each student may have a different quiz set from the quiz sets of the others."
-license = "MIT OR Apache-2.0"
+license = "MIT OR Apache-20"
 readme = "README.md"
 repository = "https://github.com/piaoyh/qrate-gui"
 
@@ -15,6 +15,7 @@ qrate = "0.5.1"
 rfd = "0.17"
 iced = { version = "0.14", features = ["tokio"] }
 rust-i18n = "3.1.5"
+include_dir = "0.7"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
