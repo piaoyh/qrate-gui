@@ -1,66 +1,3 @@
-// Copyright 2026 PARK Youngho.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
-// This file may not be copied, modified, or distributed
-// except according to those terms.
-///////////////////////////////////////////////////////////////////////////////
-
-
-use std::path::PathBuf;
-
-use iced::widget::{ button, column, row, text, center, container };
-use iced::{ Element, Task, Theme, Length, Color };
-use rfd::FileDialog;
-use rust_i18n::t;
-use include_dir::{include_dir, Dir};
-
-static LOCALES_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets/locales");
-
-
-/// Represents the messages that can be sent to the [ControlTower] to update its state.
-#[derive(Debug, Clone)]
-pub enum Message
-{
-    /// Indicates that a file has been selected, carrying its path.
-    FileSelected(Option<PathBuf>),
-
-    /// Signals that a main menu item has been clicked, with the menu's name.
-    MenuClicked(String),
-
-    /// Signals that a sub-menu item has been clicked, with the sub-menu's name.
-    SubMenuClicked(String),
-
-    /// Sets the application's locale to the given string (e.g., "en-US", "ko-KR").
-    SetLocale(String),
-
-    /// Navigates to a specified page.
-    GoToPage(String),
-}
-
-/// The main application state and logic holder for the Qrate-GUI.
-///
-/// // pub struct ControlTower
-#[derive(Debug, Default)]
-pub struct ControlTower
-{
-    /// The currently selected file path, if any.
-    selected_file_path: Option<PathBuf>,
-
-    /// The key of the currently active main menu, used for localization.
-    current_menu_key: Option<String>,
-
-    /// The font size in pixels for menu items.
-    menu_font_size_in_pixel: f32,
-
-    /// The current locale of the application, used for internationalization.
-    current_locale: String,
-
-    /// The current active page or view to display.
-    current_page: String,
-}
-
 impl ControlTower
 {
     // pub fn new() -> (Self, Task<Message>)
@@ -236,26 +173,30 @@ impl ControlTower
         let menu_bar_spacing = 10.0; // Spacing for the menu bar
         let button_padding = 5.0; // Padding for each button
 
-        // Calculate x-offset for the currently selected menu
-        let mut offset_x = 0.0;
-        if let Some(current_menu_key) = &self.current_menu_key // current_menu_key 사용
+        // Calculate x-position of the current menu button's left edge
+        let mut current_menu_offset_x = 0.0;
+        let menu_bar_outer_padding = 5.0; // .padding(5) on menu_bar row
+        current_menu_offset_x += menu_bar_outer_padding; // 메뉴바 전체의 왼쪽 패딩
+
+        if let Some(current_menu_key_str) = &self.current_menu_key
         {
-            for &key in &menu_keys // key 사용
+            for &key in &menu_keys
             {
-                if key == current_menu_key.as_str() // 키 비교
-                    { break; }  // Stop calculation when the current menu is reached
-                // Approximate width calculation for each menu button (text width + horizontal padding)
-                // Korean, Hanja, Hiragana, and Katakana characters are calculated as full menu_font_size_in_pixel,
-                // while other characters including spaces are calculated as half.
-                let text_width_estimate = self.calculate_text_width_estimate(t!(key).as_ref()); // t!(key)의 결과로 width 계산
-                offset_x += text_width_estimate + menu_bar_spacing + (button_padding * 2.0)
+                if key == current_menu_key_str.as_str()
+                    { break; }
+                
+                let text_width_estimate = self.calculate_text_width_estimate(t!(key).as_ref());
+                // 버튼의 실제 렌더링 너비는 텍스트 너비 + button_padding * 2 (좌우 패딩)로 추정합니다.
+                let button_total_width = text_width_estimate + (button_padding * 2.0) + 1.0; 
+                current_menu_offset_x += button_total_width + menu_bar_spacing;
             }
         }
 
-        let menu_bar = row(menu_keys.into_iter().map(|key| { // key 사용
-            button(text(t!(key)).size(self.menu_font_size_in_pixel)) // t!(key)로 번역된 텍스트 표시
-                .on_press(Message::MenuClicked(key.to_string())) // Message에 키 전달
+        let menu_bar = row(menu_keys.into_iter().map(|key| {
+            button(text(t!(key)).size(self.menu_font_size_in_pixel))
+                .on_press(Message::MenuClicked(key.to_string()))
                 .padding(button_padding as u16)
+                .width(Length::Shrink)
                 .style(|_theme: &Theme, status| {
                     let mut style = button::Style::default();
                     style.background = Some(Color::WHITE.into());
@@ -274,127 +215,122 @@ impl ControlTower
         .spacing(menu_bar_spacing)
         .padding(5);
 
-        // Render main content or specific page based on current_page
-        let main_view_content: Element<'_, Message> = match self.current_page.as_str() {
-            "main" => {
-                // 2. Submenu area
-                let sub_menu_area: Element<'_, Message> = if let Some(menu_key) = &self.current_menu_key // current_menu_key 사용
-                {
-                    let items = match menu_key.as_str() // 키 비교
-                    {
-                        "problem-bank-management" => vec![ // 키 사용
-                            "create-new-problem-bank",
-                            "load",
-                            "edit",
-                            "export",
-                            "export-as",
-                            "optimize",
-                        ],
-                        "generate-exam-paper" => vec![ // 키 사용
-                            "load-problem-bank",
-                            "criteria-for-problem-extraction",
-                            "load-student-list",
-                            "export-exam-paper",
-                        ],
-                        "student-list-management" => vec![ // 키 사용
-                            "load",
-                            "edit",
-                            "export",
-                            "export-as",
-                        ],
-                        "learning" => vec![ // 키 사용
-                            "load-problem-bank",
-                            "criteria-for-problem-extraction",
-                            "grading-criteria",
-                            "take-exam",
-                        ],
-                        "settings" => vec![ // 키 사용
-                            "storage-path",
-                            "atmosphere",
-                            "font",
-                            "language", // 언어 선택 메뉴는 여기에 포함
-                        ],
-                        "information" => vec![ // 키 사용
-                            "help",
-                            "software-info",
-                            "copyright-info",
-                        ],
-                        _ => vec!["coming-soon"], // 키 사용
+        // Submenu area
+        let sub_menu_area: Element<'_, Message> = if let Some(menu_key) = &self.current_menu_key
+        {
+            let items = match menu_key.as_str()
+            {
+                "problem-bank-management" => vec![
+                    "create-new-problem-bank",
+                    "load",
+                    "edit",
+                    "export",
+                    "export-as",
+                    "optimize",
+                ],
+                "generate-exam-paper" => vec![
+                    "load-problem-bank",
+                    "criteria-for-problem-extraction",
+                    "load-student-list",
+                    "export-exam-paper",
+                ],
+                "student-list-management" => vec![
+                    "load",
+                    "edit",
+                    "export",
+                    "export-as",
+                ],
+                "learning" => vec![
+                    "load-problem-bank",
+                    "criteria-for-problem-extraction",
+                    "grading-criteria",
+                    "take-exam",
+                ],
+                "settings" => vec![
+                    "storage-path",
+                    "atmosphere",
+                    "font",
+                    "language",
+                ],
+                "information" => vec![
+                    "help",
+                    "software-info",
+                    "copyright-info",
+                ],
+                _ => vec!["coming-soon"],
+            };
+
+            container(
+                column(items.into_iter().map(|item_key| {
+                    let on_press_message = if menu_key == "settings" && item_key == "language" {
+                        Message::GoToPage("language-settings".to_string())
+                    } else {
+                        Message::SubMenuClicked(item_key.to_string())
                     };
 
-                    container(
-                        column(items.into_iter().map(|item_key| { // item_key 사용
-                            let on_press_message = if menu_key == "settings" && item_key == "language" {
-                                Message::GoToPage("language-settings".to_string())
-                            } else {
-                                Message::SubMenuClicked(item_key.to_string()) // Message에 키 전달
-                            };
+                    button(text(t!(item_key)).size(self.menu_font_size_in_pixel))
+                        .on_press(on_press_message)
+                        .width(Length::Fill)
+                        .padding(8)
+                        .style(|_theme: &Theme, status| {
+                            let mut style = button::Style::default();
+                            style.background = Some(Color::WHITE.into());
+                            style.text_color = Color::BLACK;
 
-                            button(text(t!(item_key)).size(self.menu_font_size_in_pixel)) // t!(item_key)로 번역된 텍스트 표시
-                                .on_press(on_press_message)
-                                .width(Length::Fill)
-                                .padding(8)
-                                .style(|_theme: &Theme, status| {
-                                    let mut style = button::Style::default();
-                                    style.background = Some(Color::WHITE.into()); // Default background color
-                                    style.text_color = Color::BLACK; // Default text color
-
-                                    match status
-                                    {
-                                        button::Status::Hovered => { style.background = Some(Color::from_rgb(0.9, 0.9, 0.9).into()); },
-                                        button::Status::Pressed => { style.background = Some(Color::from_rgb(0.8, 0.8, 0.8).into()); },
-                                        _ => {},
-                                    }
-                                    style
-                                })
-                                .into()
-                        }))
-                        .spacing(2)
-                        .width(220.0)
-                    )
-                    .padding(5)
-                    .style(|_theme: &Theme| {
-                        container::Style {
-                            background: Some(Color::WHITE.into()),
-                            ..Default::default()
-                        }
-                    })
-                    .into() // 여기에 .into() 추가
+                            match status
+                            {
+                                button::Status::Hovered => { style.background = Some(Color::from_rgb(0.9, 0.9, 0.9).into()); },
+                                button::Status::Pressed => { style.background = Some(Color::from_rgb(0.8, 0.8, 0.8).into()); },
+                                _ => {},
+                            }
+                            style
+                        })
+                        .into()
+                }))
+                .spacing(2)
+                .width(220.0)
+            )
+            .padding(5)
+            .style(|_theme: &Theme| {
+                container::Style {
+                    background: Some(Color::WHITE.into()),
+                    ..Default::default()
                 }
-                else
-                {
-                    container(column![]).into() // 여기에 .into() 추가
-                };
+            })
+            .into()
+        }
+        else
+        {
+            iced::widget::Space::new().into() // 서브메뉴 없으면 빈 공간
+        };
 
+        // Render main content or specific page based on current_page
+        let main_content_area: Element<'_, Message> = match self.current_page.as_str() {
+            "main" => {
                 // 3. 메인 화면
                 let path_text = if let Some(path) = &self.selected_file_path
-                    { t!("selected-file", path = path.to_string_lossy().as_ref()).to_string() } // 'path' 인자 전달 및 String으로 변환
+                    { t!("selected-file", path = path.to_string_lossy().as_ref()).to_string() }
                 else
-                    { t!("no-file-selected").to_string() }; // String으로 변환
+                    { t!("no-file-selected").to_string() };
 
-                let main_content = center(
+                center(
                     column![
                         text(t!("welcome-message")).size(32),
                         text(path_text).size(18),
                     ]
                     .spacing(20)
-                );
-
-                row![
-                    iced::widget::Space::new().width(Length::Fixed(offset_x)), // offset_x is f32, so use it as is
-                    sub_menu_area,
-                    main_content,
-                ]
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
                 .into()
             },
             "language-settings" => {
                 // Language selection page
                 let available_locales = Self::get_available_locales();
                 let current_i18n_locale = rust_i18n::locale(); // Get current i18n locale
-                let debug_text = format!("Detected locales: {:?} | Current i18n locale: {}", available_locales, &*current_i18n_locale); // Debug text
                 let language_buttons = available_locales.into_iter().fold(
                     column![].spacing(10),
-                    |col, (language_name, locale)| {
+                    |col: iced::widget::Column<'_, Message>, (language_name, locale)| {
                         col.push(
                             button(text(language_name).size(self.menu_font_size_in_pixel))
                                 .on_press(Message::SetLocale(locale))
@@ -406,7 +342,6 @@ impl ControlTower
 
                 column![
                     text(t!("language")).size(32),
-                    text(debug_text).size(16), // Display debug text
                     language_buttons,
                     iced::widget::Space::new().height(Length::Fixed(20.0)),
                     button(text(t!("back")).size(self.menu_font_size_in_pixel))
@@ -424,14 +359,31 @@ impl ControlTower
             }
         };
 
+        // menu_bar의 높이를 추정합니다 (폰트 크기 + 버튼 패딩 * 2 + 메뉴 바 외부 패딩 * 2)
+        // menu_bar_outer_padding은 row 전체에 적용되는 padding이므로 실제 높이에 2배 적용
+        let menu_bar_height_estimate = self.menu_font_size_in_pixel + (button_padding * 2.0) + (menu_bar_outer_padding * 2.0);
 
-        column![
+        // 기본 콘텐츠 (menu_bar + main_content_area)
+        let content: Element<'_, Message> = column![
             menu_bar,
-            main_view_content,
+            main_content_area,
         ]
         .width(Length::Fill)
         .height(Length::Fill)
-        .into()
+        .into();
+
+        // 만약 메뉴가 열려있다면 overlay를 적용합니다.
+        if let Some(_) = &self.current_menu_key {
+            iced::widget::container(content).overlay(
+                iced::widget::overlay::menu::menu(
+                    sub_menu_area, // 서브메뉴 콘텐츠
+                    current_menu_offset_x, // X 위치
+                    menu_bar_height_estimate, // Y 위치
+                )
+            ).into() // Element<'_, Message> with overlay
+        } else {
+            content // overlay 없이 일반 콘텐츠 반환
+        }
     }
 
     // fn get_available_locales() -> Vec<(String, String)>
