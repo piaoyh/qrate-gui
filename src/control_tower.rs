@@ -1,3 +1,31 @@
+use iced::{Element, Task, Length, Theme, Color, Padding};
+use iced::widget::{column, row, center, text, button, container, stack};
+use rust_i18n::t;
+use std::path::PathBuf;
+use rfd::FileDialog;
+use include_dir::{include_dir, Dir};
+
+static LOCALES_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets/locales");
+
+pub struct ControlTower
+{
+    pub selected_file_path: Option<PathBuf>,
+    pub current_menu_key: Option<String>,
+    pub menu_font_size_in_pixel: f32,
+    pub current_locale: String,
+    pub current_page: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum Message
+{
+    MenuClicked(String),
+    SubMenuClicked(String),
+    FileSelected(Option<PathBuf>),
+    SetLocale(String),
+    GoToPage(String),
+}
+
 impl ControlTower
 {
     // pub fn new() -> (Self, Task<Message>)
@@ -327,7 +355,7 @@ impl ControlTower
             "language-settings" => {
                 // Language selection page
                 let available_locales = Self::get_available_locales();
-                let current_i18n_locale = rust_i18n::locale(); // Get current i18n locale
+                let _current_i18n_locale = rust_i18n::locale(); // Get current i18n locale
                 let language_buttons = available_locales.into_iter().fold(
                     column![].spacing(10),
                     |col: iced::widget::Column<'_, Message>, (language_name, locale)| {
@@ -372,18 +400,23 @@ impl ControlTower
         .height(Length::Fill)
         .into();
 
-        // 만약 메뉴가 열려있다면 overlay를 적용합니다.
-        if let Some(_) = &self.current_menu_key {
-            iced::widget::container(content).overlay(
-                iced::widget::overlay::menu::menu(
-                    sub_menu_area, // 서브메뉴 콘텐츠
-                    current_menu_offset_x, // X 위치
-                    menu_bar_height_estimate, // Y 위치
-                )
-            ).into() // Element<'_, Message> with overlay
-        } else {
-            content // overlay 없이 일반 콘텐츠 반환
+        // 만약 메뉴가 열려있다면 stack을 사용하여 서브메뉴를 위에 표시합니다.
+        if self.current_menu_key.is_some()
+        {
+            stack![
+                content,
+                container(sub_menu_area)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .padding(Padding {
+                        top: menu_bar_height_estimate,
+                        left: current_menu_offset_x,
+                        ..Default::default()
+                    })
+            ].into()
         }
+        else
+            { content } // overlay 없이 일반 콘텐츠 반환
     }
 
     // fn get_available_locales() -> Vec<(String, String)>
