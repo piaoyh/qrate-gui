@@ -6,7 +6,7 @@ edition = "2024"
 keywords = ["quiz", "gui", "examination", "question", "teacher"]
 categories = ["algorithms", "data-structures", "database", "gui"]
 description = "A GUI examination generator library that generates different quiz sets for all students so that each student may have a different quiz set from the quiz sets of the others."
-license = "MIT OR Apache-20"
+license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/piaoyh/qrate-gui"
 
