@@ -1,20 +1,20 @@
 welcome-message: Добро пожаловать! Мастер Викторин
 no-file-selected: Файл не выбран.
 selected-file: "Выбранный файл: %{path}"
-problem-bank-management: Управление банком задач
+question-bank-management: Управление банком задач
 generate-exam-paper: Создать экзаменационный лист
 student-list-management: Управление списком студентов
-learning: Обучение
+self-study: Обучение
 settings: Настройки
 information: Информация
-create-new-problem-bank: Создать новый банк задач
+create-new-question-bank: Создать новый банк задач
 load: Загрузить
 edit: Редактировать
 export: Экспорт
 export-as: Экспортировать как
 optimize: Оптимизировать
-load-problem-bank: Загрузить банк задач
-criteria-for-problem-extraction: Критерии извлечения задач
+load-question-bank: Загрузить банк задач
+criteria-for-question-extraction: Критерии извлечения задач
 load-student-list: Загрузить список студентов
 export-exam-paper: Экспортировать экзаменационный лист
 grading-criteria: Критерии оценки

@@ -6,6 +6,14 @@
 
 While the `qrate` crate handles the "brains" of exam generation (shuffling, variety, and logic), `qrate-gui` provides the "body" and "eyes." It is specifically tailored for developers building with **Iced**, allowing for smooth, reactive, and cross-platform user interfaces that educators can use with ease.
 
+## Background
+
+`qrate-gui` was born from the need to make the power of the `qrate` engine available to the wider educational community. By decoupling the graphical interface from the core generation logic, we have created a modular system that is both developer-friendly and end-user accessible.
+
+## Purpose
+
+The primary purpose of `qrate-gui` is to **bridge the gap between complex randomization algorithms and the classroom.** By utilizing Iced, we ensure that the resulting tools are not only powerful but also aesthetically pleasing and easy to navigate for educators who may not be tech-savvy.
+
 ## Why qrate-gui with Iced?
 
 The combination of `qrate` logic and `Iced` UI enables the development of professional tools where:
@@ -24,23 +32,14 @@ Any application built with `qrate-gui` inherits sophisticated anti-cheating mech
 *   **Option Shuffling:** Permutes multiple-choice answers uniquely for every single exam set.
 *   **Iced Integration:** Pre-defined data structures and messages designed to work seamlessly with Iced's architecture.
 
-## Background
-
-`qrate-gui` was born from the need to make the power of the `qrate` engine available to the wider educational community. By decoupling the graphical interface from the core generation logic, we have created a modular system that is both developer-friendly and end-user accessible.
-
-## Purpose
-
-The primary purpose of `qrate-gui` is to **bridge the gap between complex randomization algorithms and the classroom.** By utilizing Iced, we ensure that the resulting tools are not only powerful but also aesthetically pleasing and easy to navigate for educators who may not be tech-savvy.
-
 ## Quick Start for Developers
 
 To use `qrate-gui` in your Iced project, add it to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-qrate = "0.5.1"        # The core engine
-qrate-gui = "0.1"    # This crate
-iced = { version = "0.14", features = ["tokio"] } # UI Framework
+qrate = "0.5.1"     # The core engine
+qrate-gui = "0.1"   # This crate
 ```
 
 ### Basic Integration Concept
@@ -48,33 +47,11 @@ iced = { version = "0.14", features = ["tokio"] } # UI Framework
 `qrate-gui` simplifies the connection between your Iced UI and the generation logic. Below is a conceptual example of how to link an Iced message to the engine:
 
 ```rust
-use iced::{Element, Sandbox};
+use qrate_gui::ControlTower;
 
-struct App;
-
-impl Sandbox for App {
-    type Message = ();
-
-    fn new() -> Self {
-        App
-    }
-
-    fn title(&self) -> String {
-        String::from("My Iced App")
-    }
-
-    fn update(&mut self, message: Self::Message) {
-        // Handle messages
-    }
-
-    fn view(&self) -> Element<Self::Message> {
-        // Your Iced UI code here...
-        iced::widget::text("Hello, Iced!").into()
-    }
-}
-
-fn main() -> iced::Result {
-    App::run(iced::Settings::default())
+fn main() -> iced::Result
+{
+    ControlTower::run()
 }
 ```
 

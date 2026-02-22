@@ -14,11 +14,49 @@ use qrate::{ QBank, SBank };
 use iced::{ application, Element, Task, Length, Theme, Color, Padding };
 use iced::widget::{ column, row, center, text, button, container, stack };
 use rust_i18n::t;
-use rfd::FileDialog;
 use include_dir::{ include_dir, Dir };
+
+use crate::{ LoadFile, ResultLoadFile };
 
 static LOCALES_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets/locales");
 
+/// Defines the messages sent to the `ControlTower`'s `update` function.
+///
+/// These messages are triggered by user interactions and drive the
+/// application's state changes.
+#[derive(Clone)]
+pub enum Message
+{
+    /// Triggered when a main menu button is clicked.
+    /// The `String` contains the key of the clicked menu.
+    MenuClicked(String),
+
+    /// Triggered when a submenu item is clicked.
+    /// The `String` contains the key of the clicked submenu item.
+    SubMenuClicked(String),
+
+    /// Occurs when a user selects a file from the native file dialog.
+    /// Contains the path to the selected file.
+    FileSelected(PathBuf),
+
+    /// Triggered when a `QBank` has been loaded from a file.
+    QBankLoaded(ResultLoadFile),
+
+    /// Triggered when the user selects a new language.
+    /// The `String` contains the new locale code (e.g., "en", "ko").
+    SetLocale(String),
+    
+    /// Triggered to navigate to a different page within the application.
+    /// The `String` contains the identifier for the target page.
+    GoToPage(String),
+}
+
+/// Manages the state and UI logic for the `qrate-gui` application.
+///
+/// This struct holds the question bank, student bank, UI state (like the
+/// current menu and page), and localization settings. It receives `Message`s
+/// from the UI and updates its state accordingly, which then determines
+/// what is rendered on the screen.
 pub struct ControlTower
 {
     qbank: QBank,
@@ -28,16 +66,6 @@ pub struct ControlTower
     menu_font_size_in_pixel: f32,
     current_locale: String,
     current_page: String,
-}
-
-#[derive(Debug, Clone)]
-pub enum Message
-{
-    MenuClicked(String),
-    SubMenuClicked(String),
-    FileSelected(PathBuf),
-    SetLocale(String),
-    GoToPage(String),
 }
 
 impl ControlTower
@@ -408,19 +436,36 @@ impl ControlTower
                     { self.current_menu_key = menu_key; }
                 Task::none()
             },
-            Message::SubMenuClicked(sub_item_key) => { // sub_item을 sub_item_key로 변경
-                if sub_item_key == "load" || sub_item_key == "load-problem-bank" // 키로 비교
-                {
-                    return Task::perform(Self::pick_file(), |path_option| {
+            Message::SubMenuClicked(sub_item_key) => {
+                if sub_item_key == "load" || sub_item_key == "load-question-bank" {
+                    self.current_menu_key.clear();
+                    return Task::perform(LoadFile::pick_question_bank(), |path_option| {
                         Message::FileSelected(path_option.unwrap_or_default())
                     });
                 }
-                self.current_menu_key.clear(); // 현재 메뉴 키를 초기화
+                self.current_menu_key.clear();
                 Task::none()
             },
             Message::FileSelected(path) => {
-                self.selected_file_path = path;
-                self.current_menu_key.clear(); // current_menu_key로 변경
+                self.selected_file_path = path.clone();
+                self.current_menu_key.clear();
+                if path.as_os_str().is_empty() {
+                    return Task::none();
+                }
+                Task::perform(LoadFile::load_qbank_from_path(path), Message::QBankLoaded)
+            },
+            Message::QBankLoaded(result) => {
+                match result {
+                    ResultLoadFile::Success(qbank) => {
+                        self.qbank = qbank;
+                        // TODO: Add a success message for the user.
+                    }
+                    ResultLoadFile::Error(e) => {
+                        // For now, just print the error to stderr.
+                        // A better approach would be to display this in the UI.
+                        eprintln!("Error loading QBank: {}", e);
+                    }
+                }
                 Task::none()
             },
             Message::SetLocale(locale) => {
@@ -506,10 +551,10 @@ impl ControlTower
     {
         // Define menu keys, not translated strings
         let menu_keys = vec![
-            "problem-bank-management",
+            "question-bank-management",
             "generate-exam-paper",
             "student-list-management",
-            "learning",
+            "self-study",
             "settings",
             "information",
         ];
@@ -563,8 +608,8 @@ impl ControlTower
         {
             let items = match self.current_menu_key.as_str()
             {
-                "problem-bank-management" => vec![
-                    "create-new-problem-bank",
+                "question-bank-management" => vec![
+                    "create-new-question-bank",
                     "load",
                     "edit",
                     "export",
@@ -572,8 +617,8 @@ impl ControlTower
                     "optimize",
                 ],
                 "generate-exam-paper" => vec![
-                    "load-problem-bank",
-                    "criteria-for-problem-extraction",
+                    "load-question-bank",
+                    "criteria-for-question-extraction",
                     "load-student-list",
                     "export-exam-paper",
                 ],
@@ -583,9 +628,9 @@ impl ControlTower
                     "export",
                     "export-as",
                 ],
-                "learning" => vec![
-                    "load-problem-bank",
-                    "criteria-for-problem-extraction",
+                "self-study" => vec![
+                    "load-question-bank",
+                    "criteria-for-question-extraction",
                     "grading-criteria",
                     "take-exam",
                 ],
@@ -774,35 +819,5 @@ impl ControlTower
             }
         }
         locales
-    }
-
-    // async fn pick_file() -> Option<PathBuf>
-    /// Asynchronously opens a file dialog for the user to pick a question bank file.
-    ///
-    /// # Output
-    /// An `Option<PathBuf>` representing the path to the selected file, or `None` if no file was selected.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// // This is an async function that opens a GUI file dialog.
-    /// // It cannot be directly tested with assert_eq! without mocking the GUI,
-    /// // but here's how you would typically call it:
-    /// async fn example_usage() {
-    ///     use std::path::PathBuf;
-    ///     use crate::control_tower::ControlTower;
-    ///
-    ///     let selected_path: Option<PathBuf> = ControlTower::pick_file().await;
-    ///     match selected_path {
-    ///         Some(path) => println!("File selected: {:?}", path),
-    ///         None => println!("No file selected."),
-    ///     }
-    /// }
-    /// ```
-    async fn pick_file() -> Option<PathBuf>
-    {
-        FileDialog::new()
-            .add_filter("Question Bank", &["qbdb", "xlsx"])
-            .set_directory(".")
-            .pick_file()
     }
 }
