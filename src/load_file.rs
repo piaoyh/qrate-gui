@@ -6,7 +6,7 @@ use std::path::PathBuf;
 ///
 /// This enum encapsulates either a successfully loaded `QBank` instance
 /// or an error message indicating why the loading failed.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ResultLoadFile
 {
     /// Indicates successful loading of a `QBank`.
@@ -17,6 +17,7 @@ pub enum ResultLoadFile
 
 /// Provides utility functions for file-related operations in the application,
 /// specifically for picking and loading `QBank` files.
+#[derive(Debug, Clone)]
 pub struct LoadFile;
 
 impl LoadFile

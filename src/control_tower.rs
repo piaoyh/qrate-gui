@@ -24,7 +24,7 @@ static LOCALES_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets/locales")
 ///
 /// These messages are triggered by user interactions and drive the
 /// application's state changes.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Message
 {
     /// Triggered when a main menu button is clicked.
@@ -57,6 +57,7 @@ pub enum Message
 /// current menu and page), and localization settings. It receives `Message`s
 /// from the UI and updates its state accordingly, which then determines
 /// what is rendered on the screen.
+#[derive(Debug, Clone)]
 pub struct ControlTower
 {
     qbank: QBank,

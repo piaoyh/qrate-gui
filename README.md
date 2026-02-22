@@ -38,7 +38,6 @@ To use `qrate-gui` in your Iced project, add it to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-qrate = "0.5.1"     # The core engine
 qrate-gui = "0.1"   # This crate
 ```
 
