@@ -430,55 +430,72 @@ impl ControlTower
     {
         match message
         {
-            Message::MenuClicked(menu_key) => {
-                if self.current_menu_key == menu_key
-                    { self.current_menu_key.clear(); }
-                else
-                    { self.current_menu_key = menu_key; }
-                Task::none()
-            },
-            Message::SubMenuClicked(sub_item_key) => {
-                if sub_item_key == "load" || sub_item_key == "load-question-bank" {
-                    self.current_menu_key.clear();
-                    return Task::perform(LoadFile::pick_question_bank(), |path_option| {
-                        Message::FileSelected(path_option.unwrap_or_default())
-                    });
-                }
-                self.current_menu_key.clear();
-                Task::none()
-            },
-            Message::FileSelected(path) => {
-                self.selected_file_path = path.clone();
-                self.current_menu_key.clear();
-                if path.as_os_str().is_empty() {
-                    return Task::none();
-                }
-                Task::perform(LoadFile::load_qbank_from_path(path), Message::QBankLoaded)
-            },
-            Message::QBankLoaded(result) => {
-                match result {
-                    ResultLoadFile::Success(qbank) => {
-                        self.qbank = qbank;
-                        // TODO: Add a success message for the user.
-                    }
-                    ResultLoadFile::Error(e) => {
-                        // For now, just print the error to stderr.
-                        // A better approach would be to display this in the UI.
-                        eprintln!("Error loading QBank: {}", e);
-                    }
-                }
-                Task::none()
-            },
-            Message::SetLocale(locale) => {
-                rust_i18n::set_locale(&locale);
-                self.current_locale = locale;
-                Task::none()
-            },
-            Message::GoToPage(page_name) => {
-                self.current_page = page_name;
-                Task::none()
-            },
+            Message::MenuClicked(menu_key) => self.click_menu(menu_key),
+            Message::SubMenuClicked(sub_item_key) => self.click_submenu(sub_item_key),
+            Message::FileSelected(path) => self.select_file(path),
+            Message::QBankLoaded(result) => self.load_qbank(result),
+            Message::SetLocale(locale) => self.set_locale(locale),
+            Message::GoToPage(page_name) => self.go_to_page(page_name),
         }
+    }
+
+    fn click_menu(&mut self, menu_key: String) -> Task<Message>
+    {
+        if self.current_menu_key == menu_key
+            { self.current_menu_key.clear(); }
+        else
+            { self.current_menu_key = menu_key; }
+        Task::none()
+    }
+
+    fn click_submenu(&mut self, sub_item_key: String) -> Task<Message>
+    {
+        self.current_menu_key.clear();
+        match sub_item_key.as_str()
+        {
+            "load-question-bank" => LoadFile::perform_pick_qbank_task(),
+            // "create-new-question-bank" => Task::none(),
+            _ => Task::none(),
+        }
+    }
+
+    fn select_file(&mut self, path: PathBuf) -> Task<Message>
+    {
+        self.selected_file_path = path.clone();
+        self.current_menu_key.clear();
+        if path.as_os_str().is_empty()
+            { Task::none() }
+        else
+            { LoadFile::perform_load_qbank_task(path) }
+    }
+
+    fn load_qbank(&mut self, result: ResultLoadFile) -> Task<Message>
+    {
+        match result
+        {
+            ResultLoadFile::Success(qbank) => self.qbank = qbank,   // TODO: Add a success message for the user.
+            ResultLoadFile::FileNotFound => eprintln!("Error loading QBank: File does not exist."),
+            ResultLoadFile::FailedToOpenSQLite => eprintln!("Error loading QBank: Failed to open QBDB file."),
+            ResultLoadFile::FailedToReadSQLite => eprintln!("Error loading QBank: Failed to read QBank from QBDB."),
+            ResultLoadFile::FailedToOpenExcel => eprintln!("Error loading QBank: Failed to open Excel file."),
+            ResultLoadFile::FailedToReadExcel => eprintln!("Error loading QBank: Failed to read QBank from Excel."),
+            ResultLoadFile::InvalidExcelExtension => eprintln!("Error loading QBank: Not a valid *.qb.xlsx file. Expecting .qb.xlsx extension for Excel QBank."),
+            ResultLoadFile::UnsupportedExtension => eprintln!("Error loading QBank: Unsupported file extension."),
+        }
+        Task::none()
+    }
+
+    fn set_locale(&mut self, locale: String) -> Task<Message>
+    {
+        rust_i18n::set_locale(&locale);
+        self.current_locale = locale;
+        Task::none()
+    }
+
+    fn go_to_page(&mut self, page_name: String) -> Task<Message>
+    {
+        self.current_page = page_name;
+        Task::none()
     }
 
     // fn calculate_text_width_estimate(&self, name: &str) -> f32
@@ -611,7 +628,7 @@ impl ControlTower
             {
                 "question-bank-management" => vec![
                     "create-new-question-bank",
-                    "load",
+                    "load-question-bank",
                     "edit",
                     "export",
                     "export-as",

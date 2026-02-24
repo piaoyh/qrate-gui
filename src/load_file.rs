@@ -1,18 +1,52 @@
-use qrate::{QBank, QBDB, SQLiteDB, Excel};
-use rfd::FileDialog;
+// Copyright 2026 PARK Youngho.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+///////////////////////////////////////////////////////////////////////////////
+
+
 use std::path::PathBuf;
+use std::convert::identity;
+
+use qrate::{ QBank, QBDB, SQLiteDB, Excel };
+use rfd::FileDialog;
+use iced::Task;
+
+use crate::control_tower::Message;
 
 /// Represents the result of an attempt to load a `QBank`.
 ///
 /// This enum encapsulates either a successfully loaded `QBank` instance
-/// or an error message indicating why the loading failed.
+/// or a specific error indicating why the loading failed.
 #[derive(Debug, Clone)]
 pub enum ResultLoadFile
 {
     /// Indicates successful loading of a `QBank`.
     Success(QBank),
-    /// Indicates that `QBank` loading failed, containing an error message.
-    Error(String),
+    
+    /// The specified file was not found.
+    FileNotFound,
+
+    /// Failed to open the SQLite database file.
+    FailedToOpenSQLite,
+
+    /// Failed to read the QBank data from the SQLite database.
+    FailedToReadSQLite,
+
+    /// Failed to open the Excel file.
+    FailedToOpenExcel,
+
+    /// Failed to read the QBank data from the Excel file.
+    FailedToReadExcel,
+
+    /// The Excel file does not have the required .qb.xlsx extension.
+    InvalidExcelExtension,
+
+    /// The file extension is not supported.
+    UnsupportedExtension,
 }
 
 /// Provides utility functions for file-related operations in the application,
@@ -67,7 +101,7 @@ impl LoadFile
     ///
     /// # Output
     /// A `ResultLoadFile` enum, which is `Success(QBank)` if loading is
-    /// successful, or `Error(String)` if it fails.
+    /// successful, or one of the error variants if it fails.
     ///
     /// # Examples
     /// ```no_run
@@ -89,21 +123,21 @@ impl LoadFile
     ///             println!("Successfully loaded QBank with {} questions.",
     ///                      qbank.get_questions().len());
     ///         },
-    ///         ResultLoadFile::Error(e) => {
-    ///             println!("Error loading QBank: {}", e);
+    ///         _ => {
+    ///             println!("Error loading QBank.");
     ///         },
     ///     }
     ///
     ///     let result_invalid_ext = LoadFile::load_qbank_from_path(invalid_extension_path).await;
-    ///     if let ResultLoadFile::Error(e) = result_invalid_ext {
-    ///         println!("Expected error for invalid file: {}", e);
+    ///     if matches!(result_invalid_ext, ResultLoadFile::UnsupportedExtension) {
+    ///         println!("Expected unsupported extension error.");
     ///     }
     /// }
     /// ```
     pub async fn load_qbank_from_path(path: PathBuf) -> ResultLoadFile
     {
         if !path.exists()
-            { return ResultLoadFile::Error("File does not exist.".to_string()); }
+            { return ResultLoadFile::FileNotFound; }
 
         let path_str = path.to_string_lossy().into_owned(); // Convert PathBuf to String for QBDB::open
         let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
@@ -115,10 +149,10 @@ impl LoadFile
                     Some(db) => {
                         match db.read_qbank() { // Then read_qbank
                             Some(qbank) => ResultLoadFile::Success(qbank),
-                            None => ResultLoadFile::Error("Failed to read QBank from QBDB.".to_string()),
+                            None => ResultLoadFile::FailedToReadSQLite,
                         }
                     },
-                    None => ResultLoadFile::Error("Failed to open QBDB file.".to_string()),
+                    None => ResultLoadFile::FailedToOpenSQLite,
                 }
             },
             "xlsx" => {
@@ -127,18 +161,74 @@ impl LoadFile
                         Some(excel) => {
                             match excel.read_qbank() { // Then read_qbank
                                 Some(qbank) => ResultLoadFile::Success(qbank),
-                                None => ResultLoadFile::Error("Failed to read QBank from Excel.".to_string()),
+                                None => ResultLoadFile::FailedToReadExcel,
                             }
                         },
-                        None => ResultLoadFile::Error("Failed to open Excel file.".to_string()),
+                        None => ResultLoadFile::FailedToOpenExcel,
                     }
                 }
                 else
                 {
-                    ResultLoadFile::Error("Not a valid *.qb.xlsx file. Expecting .qb.xlsx extension for Excel QBank.".to_string())
+                    ResultLoadFile::InvalidExcelExtension
                 }
             },
-            _ => ResultLoadFile::Error(format!("Unsupported file extension: {}", extension)),
+            _ => ResultLoadFile::UnsupportedExtension,
         }
     }
+
+    // pub fn perform_pick_qbank_task() -> Task<Message>
+    /// Creates a [Task] to perform the asynchronous operation of picking a question bank file.
+    ///
+    /// This function encapsulates the `Task::perform` call, which spawns an asynchronous
+    /// operation to open a file dialog and then wraps the result in a `Message::FileSelected`.
+    ///
+    /// # Output
+    /// A [Task] that, when run, will eventually produce a `Message::FileSelected`.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use iced::Task;
+    /// use crate::load_file::LoadFile;
+    /// use crate::control_tower::Message; // Assuming Message is public
+    ///
+    /// // In an `iced` update function:
+    /// // let task: Task<Message> = LoadFile::perform_pick_qbank_task();
+    /// // return task;
+    /// ```
+    #[inline]
+    pub fn perform_pick_qbank_task() -> Task<Message>
+    {
+        Task::perform(async { Message::FileSelected(LoadFile::pick_question_bank().await.unwrap_or_default()) }, identity)
+    }
+
+    // pub fn perform_load_qbank_task(path: PathBuf) -> Task<Message>
+    /// Creates a [Task] to perform the asynchronous operation of loading a `QBank` from a specified path.
+    ///
+    /// This function encapsulates the `Task::perform` call, which spawns an asynchronous
+    /// operation to load the QBank and then wraps the result in a `Message::QBankLoaded`.
+    ///
+    /// # Arguments
+    /// * `path` - The `PathBuf` of the file to load the QBank from.
+    ///
+    /// # Output
+    /// A [Task] that, when run, will eventually produce a `Message::QBankLoaded`.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use iced::Task;
+    /// use crate::load_file::LoadFile;
+    /// use crate::control_tower::Message; // Assuming Message is public
+    /// use std::path::PathBuf;
+    ///
+    /// // In an `iced` update function:
+    /// // let path_to_qbank = PathBuf::from("path/to/my_qbank.qbdb");
+    /// // let task: Task<Message> = LoadFile::perform_load_qbank_task(path_to_qbank);
+    /// // return task;
+    /// ```
+    #[inline]
+    pub fn perform_load_qbank_task(path: PathBuf) -> Task<Message>
+    {
+        Task::perform(LoadFile::load_qbank_from_path(path), Message::QBankLoaded)
+    }
 }
+
